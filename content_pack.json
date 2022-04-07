@@ -1,12 +1,12 @@
 {
   "v": "1",
   "id": "48f10c1d-e1b2-4561-8191-d64915765ca7",
-  "rev": 4,
+  "rev": 5,
   "name": "nginx-syslog",
   "summary": "This content pack supports the NGINX syslog feature. It only requires modification of the nginx.conf file.",
   "description": "This content pack supports the NGINX syslog feature. It only requires modification of the nginx.conf file. There are no bells and whistles. The goal is to start logging as quickly as possible.",
   "vendor": "Nathaniel B <nathaniel@scriptingis.life>",
-  "url": "https://github.com/scriptingislife/graylog-content-pack-nginx-syslog",
+  "url": "https://github.com/kassi/graylog-content-pack-nginx-syslog",
   "parameters": [],
   "entities": [
     {
@@ -19,7 +19,7 @@
       "data": {
         "title": {
           "@type": "string",
-          "@value": "nginx-syslog"
+          "@value": "nginx acces log"
         },
         "configuration": {
           "expand_structured_data": {
@@ -32,7 +32,7 @@
           },
           "port": {
             "@type": "integer",
-            "@value": 12401
+            "@value": 12304
           },
           "number_worker_threads": {
             "@type": "integer",
@@ -96,7 +96,7 @@
         },
         "source": {
           "@type": "string",
-          "@value": "pipeline \"NGINX JSON Processing\"\nstage 0 match all\nrule \"nginx Syslog to JSON string\"\nstage 1 match all\nrule \"Extract JSON fields from message_json\"\nstage 2 match all\nrule \"Parse nginx timestamp\"\nstage 3 match all\nrule \"Shorten message field to nginx request\"\nend"
+          "@value": "pipeline \"NGINX JSON Processing\"\nstage 0 match all\nrule \"nginx Syslog to JSON string\"\nstage 1 match all\nrule \"Extract JSON fields from message_json\"\nstage 2 match all\nrule \"Parse nginx timestamp\"\nstage 3 match all\nrule \"Shorten message field to nginx request\"\nstage 4 match all\nrule \"Extract GeoIP from remote_addr\"\nend"
         },
         "connected_streams": [
           {
@@ -227,6 +227,34 @@
     {
       "v": "1",
       "type": {
+        "name": "pipeline_rule",
+        "version": "1"
+      },
+      "id": "526cb02f-58d8-4e40-822f-462065082760",
+      "data": {
+        "title": {
+          "@type": "string",
+          "@value": "Extract GeoIP from remote_addr"
+        },
+        "description": {
+          "@type": "string",
+          "@value": ""
+        },
+        "source": {
+          "@type": "string",
+          "@value": "rule \"Extract GeoIP from remote_addr\"\nwhen\nhas_field(\"remote_addr\")\nthen\nlet geo = lookup(\"geo-ip-city-maxmind-lookup\", to_string($message.remote_addr));\nset_field(\"remote_addr_geo_location\", geo[\"coordinates\"]);\nset_field(\"remote_addr_geo_country\", geo[\"country\"].iso_code);\nset_field(\"remote_addr_geo_city\", geo[\"city\"].names.en);\nend"
+        }
+      },
+      "constraints": [
+        {
+          "type": "server-version",
+          "version": ">=4.2.5+59802bf"
+        }
+      ]
+    },
+    {
+      "v": "1",
+      "type": {
         "name": "stream",
         "version": "1"
       },
@@ -283,6 +311,235 @@
           "@type": "boolean",
           "@value": false
         }
+      },
+      "constraints": [
+        {
+          "type": "server-version",
+          "version": ">=4.2.5+59802bf"
+        }
+      ]
+    },
+    {
+      "id": "4bc475db-6f2f-430c-afea-e72167da98c6",
+      "type": {
+        "name": "lookup_adapter",
+        "version": "1"
+      },
+      "v": "1",
+      "data": {
+        "name": {
+          "@type": "string",
+          "@value": "geo-ip-city-maxmind-adapater"
+        },
+        "title": {
+          "@type": "string",
+          "@value": "Geo IP - City - MaxMind adapater"
+        },
+        "description": {
+          "@type": "string",
+          "@value": ""
+        },
+        "configuration": {
+          "type": {
+            "@type": "string",
+            "@value": "maxmind_geoip"
+          },
+          "path": {
+            "@type": "string",
+            "@value": "/etc/graylog/server/GeoLite2-City.mmdb"
+          },
+          "database_type": {
+            "@type": "string",
+            "@value": "MAXMIND_CITY"
+          },
+          "check_interval": {
+            "@type": "long",
+            "@value": 1
+          },
+          "check_interval_unit": {
+            "@type": "string",
+            "@value": "DAYS"
+          }
+        }
+      },
+      "constraints": [
+        {
+          "type": "server-version",
+          "version": ">=3.0.1+de74b68"
+        }
+      ]
+    },
+    {
+      "id": "912b98f2-d3dd-4d63-b131-18923a6d35c9",
+      "type": {
+        "name": "lookup_cache",
+        "version": "1"
+      },
+      "v": "1",
+      "data": {
+        "name": {
+          "@type": "string",
+          "@value": "geo-ip-city-maxmind-cache"
+        },
+        "title": {
+          "@type": "string",
+          "@value": "Geo IP - City - MaxMind cache"
+        },
+        "description": {
+          "@type": "string",
+          "@value": ""
+        },
+        "configuration": {
+          "type": {
+            "@type": "string",
+            "@value": "guava_cache"
+          },
+          "max_size": {
+            "@type": "integer",
+            "@value": 10000
+          },
+          "expire_after_access": {
+            "@type": "long",
+            "@value": 0
+          },
+          "expire_after_access_unit": {
+            "@type": "string",
+            "@value": "MINUTES"
+          },
+          "expire_after_write": {
+            "@type": "long",
+            "@value": 6
+          },
+          "expire_after_write_unit": {
+            "@type": "string",
+            "@value": "HOURS"
+          }
+        }
+      },
+      "constraints": [
+        {
+          "type": "server-version",
+          "version": ">=3.0.1+de74b68"
+        }
+      ]
+    },
+    {
+      "id": "185911de-1f1c-49b8-a5f9-fa61e8e70b46",
+      "type": {
+        "name": "lookup_table",
+        "version": "1"
+      },
+      "v": "1",
+      "data": {
+        "default_single_value_type": {
+          "@type": "string",
+          "@value": "NULL"
+        },
+        "cache_name": {
+          "@type": "string",
+          "@value": "912b98f2-d3dd-4d63-b131-18923a6d35c9"
+        },
+        "name": {
+          "@type": "string",
+          "@value": "geo-ip-city-maxmind-lookup"
+        },
+        "default_multi_value_type": {
+          "@type": "string",
+          "@value": "NULL"
+        },
+        "default_multi_value": {
+          "@type": "string",
+          "@value": ""
+        },
+        "data_adapter_name": {
+          "@type": "string",
+          "@value": "4bc475db-6f2f-430c-afea-e72167da98c6"
+        },
+        "title": {
+          "@type": "string",
+          "@value": "Geo IP - City - MaxMind Lookup"
+        },
+        "default_single_value": {
+          "@type": "string",
+          "@value": "0"
+        },
+        "description": {
+          "@type": "string",
+          "@value": ""
+        }
+      },
+      "constraints": [
+        {
+          "type": "server-version",
+          "version": ">=3.0.1+de74b68"
+        }
+      ]
+    },
+    {
+      "v": "1",
+      "type": {
+        "name": "input",
+        "version": "1"
+      },
+      "id": "540d1628-ceed-49d4-8960-068c5afaa993",
+      "data": {
+        "title": {
+          "@type": "string",
+          "@value": "nginx error log"
+        },
+        "configuration": {
+          "expand_structured_data": {
+            "@type": "boolean",
+            "@value": false
+          },
+          "recv_buffer_size": {
+            "@type": "integer",
+            "@value": 1048576
+          },
+          "port": {
+            "@type": "integer",
+            "@value": 12305
+          },
+          "number_worker_threads": {
+            "@type": "integer",
+            "@value": 4
+          },
+          "force_rdns": {
+            "@type": "boolean",
+            "@value": false
+          },
+          "allow_override_date": {
+            "@type": "boolean",
+            "@value": true
+          },
+          "bind_address": {
+            "@type": "string",
+            "@value": "0.0.0.0"
+          },
+          "store_full_message": {
+            "@type": "boolean",
+            "@value": true
+          }
+        },
+        "static_fields": {
+          "nginx_error": {
+            "@type": "string",
+            "@value": "true"
+          },
+          "from_nginx": {
+            "@type": "string",
+            "@value": "true"
+          }
+        },
+        "type": {
+          "@type": "string",
+          "@value": "org.graylog2.inputs.syslog.udp.SyslogUDPInput"
+        },
+        "global": {
+          "@type": "boolean",
+          "@value": true
+        },
+        "extractors": []
       },
       "constraints": [
         {
